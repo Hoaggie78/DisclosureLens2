@@ -1,3 +1,5 @@
+import json
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -62,3 +64,24 @@ def test_audit_video_handles_missing_optional_fields():
     data = response.json()
     assert data["riskLabel"] == "Medium"
     assert "Add a short disclosure" in data["quickestFix"]
+
+
+def test_audit_video_writes_redacted_capture_log(tmp_path, monkeypatch):
+    monkeypatch.setenv("DISCLOSURELENS_LOG_DIR", str(tmp_path))
+
+    response = client.post("/audit/video", json=sample_payload())
+
+    assert response.status_code == 200
+    log_file = tmp_path / "audit_requests.jsonl"
+    assert log_file.exists()
+    line = log_file.read_text(encoding="utf-8").strip()
+
+    assert "Future Stories Lab" in line
+    assert "screenshotBase64" not in line
+    assert "screenshotBytes" in line
+    assert "response" in line
+
+    record = json.loads(line)
+    assert record["request"]["screenshotBytes"] > 0
+    assert record["response"]["riskLabel"] in ["Low", "Medium", "High"]
+    assert record["response"]["markdown"].startswith("## DisclosureLens Video Audit")

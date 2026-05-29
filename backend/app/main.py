@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.audit import generate_mock_video_audit
+from app.audit_log import append_audit_log
 from app.models import VideoAuditRequest, VideoAuditResponse
 
 
@@ -24,4 +25,6 @@ def health() -> dict[str, str]:
 
 @app.post("/audit/video", response_model=VideoAuditResponse)
 def audit_video(payload: VideoAuditRequest) -> VideoAuditResponse:
-    return generate_mock_video_audit(payload)
+    audit = generate_mock_video_audit(payload)
+    append_audit_log(payload, audit)
+    return audit

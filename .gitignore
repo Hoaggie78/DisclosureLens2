@@ -3,6 +3,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 
+logs/
 extension/node_modules/
 extension/dist/
 extension/.vite/
