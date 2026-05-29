@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DisclosureLens</title>
+    <script type="module" src="./popup.ts"></script>
+  </head>
+  <body>
+    <main class="popup-shell">
+      <header>
+        <p class="eyebrow">DisclosureLens</p>
+        <h1>Audit current YouTube video</h1>
+        <p class="subhead">Visible-signal review for AI disclosure, viewer trust, sponsor risk, and platform-readiness.</p>
+      </header>
+
+      <button id="auditButton" type="button">Run audit</button>
+      <p id="status" role="status">Open a YouTube video, then click Run audit.</p>
+
+      <section id="result" class="hidden" aria-live="polite">
+        <div class="score-row">
+          <span id="riskLabel" class="badge">—</span>
+          <strong id="riskScore">—/5</strong>
+        </div>
+
+        <h2>Biggest finding</h2>
+        <p id="biggestFinding"></p>
+
+        <h2>Quickest fix</h2>
+        <p id="quickestFix"></p>
+
+        <h2>Copy/paste fixes</h2>
+        <label>Description disclosure</label>
+        <textarea id="descriptionDisclosure" readonly></textarea>
+        <button class="copy" data-copy-target="descriptionDisclosure" type="button">Copy description disclosure</button>
+
+        <label>Pinned comment disclosure</label>
+        <textarea id="pinnedCommentDisclosure" readonly></textarea>
+        <button class="copy" data-copy-target="pinnedCommentDisclosure" type="button">Copy pinned comment</button>
+
+        <label>Markdown report</label>
+        <textarea id="markdown" readonly></textarea>
+        <button class="copy" data-copy-target="markdown" type="button">Copy Markdown</button>
+      </section>
+    </main>
+  </body>
+</html>

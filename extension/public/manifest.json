@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "DisclosureLens",
+  "description": "Audit visible AI disclosure, viewer-trust, sponsor-risk, and platform-readiness signals on YouTube videos.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "Audit current YouTube video"
+  },
+  "background": {
+    "service_worker": "background/serviceWorker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*", "https://m.youtube.com/*"],
+      "js": ["content/youtubeExtractor.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["activeTab", "tabs"],
+  "host_permissions": ["https://www.youtube.com/*", "https://m.youtube.com/*", "http://localhost:8000/*"]
+}
