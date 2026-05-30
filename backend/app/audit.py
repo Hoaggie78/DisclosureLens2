@@ -1,15 +1,192 @@
-from app.models import VideoAuditRequest, VideoAuditResponse
+from app.models import RecommendedAction, VideoAuditRequest, VideoAuditResponse
+
+
+CREATOR_DISCLOSURE_MARKERS = [
+    "ai-assisted",
+    "ai assisted",
+    "created with ai",
+    "made with ai",
+    "uses ai",
+    "used ai",
+]
+
+PLATFORM_AI_LABEL_MARKERS = [
+    "ai-generated video summary",
+    "auto-dubbed",
+    "automatically generated",
+    "quality and accuracy may vary",
+]
+
+STRONG_AI_SIGNAL_MARKERS = [
+    "ai voice",
+    "synthetic voice",
+    "voice clone",
+    "voice cloning",
+    "ai-generated",
+    "ai generated",
+    "generated visuals",
+    "synthetic media",
+    "deepfake",
+    "recreates",
+]
+
+
+LOW_RISK_FINDING = (
+    "The video already includes visible AI-use disclosure. The main opportunity is to keep that disclosure "
+    "easy to find near the top of the description and, when useful, mirrored in a pinned comment."
+)
+MEDIUM_RISK_FINDING = (
+    "Visible signals suggest the video may benefit from clearer AI-assisted content disclosure near the top "
+    "of the description and/or in a pinned comment."
+)
+PLATFORM_LABEL_FINDING = (
+    "The page includes platform-generated AI labels, such as auto-dubbed or automatically generated language "
+    "tracks. That is platform context, not evidence that the main video itself is AI-generated and not a "
+    "creator-written AI-use disclosure. No disclosure fix is recommended from this signal alone."
+)
+HIGH_RISK_FINDING = (
+    "Strong visible AI-use signals appear without a clear creator disclosure. This creates higher viewer-trust "
+    "and sponsor-review risk because viewers may not know whether voice, visuals, or editing were AI-assisted."
+)
+NO_AI_SIGNAL_FINDING = (
+    "No visible AI-use signals were found in the title, description, visible page text, or creator-controlled "
+    "disclosure areas captured for this audit. This looks like a normal video/interview from the available evidence."
+)
+INSUFFICIENT_CONTEXT_FINDING = (
+    "The audit did not capture enough page context to evaluate AI-use disclosure confidently. Open the video page "
+    "with the description expanded, then rerun the audit."
+)
+
+
+def _combined_text(payload: VideoAuditRequest) -> str:
+    parts = [
+        payload.title,
+        payload.channelName,
+        payload.description,
+        payload.pinnedComment,
+        payload.transcript,
+    ]
+    return "\n".join(part for part in parts if part).lower()
+
+
+def _creator_disclosure_text(payload: VideoAuditRequest) -> str:
+    # Only creator-controlled disclosure locations should lower risk. YouTube-generated labels in the scraped
+    # page text are useful signals, but they should not be treated as the creator's own disclosure.
+    parts = [payload.description, payload.pinnedComment]
+    text = "\n".join(part for part in parts if part).lower()
+    for marker in PLATFORM_AI_LABEL_MARKERS:
+        text = text.replace(marker, "")
+    return text
+
+
+def _strong_signal_text(payload: VideoAuditRequest) -> str:
+    # Platform labels can contain phrases like "AI-generated video summary" that overlap with stronger
+    # creator/content AI markers. Strip known platform-label phrases before counting strong signals so a
+    # platform-generated label alone does not appear as creator/content AI evidence.
+    text = _combined_text(payload)
+    for marker in PLATFORM_AI_LABEL_MARKERS:
+        text = text.replace(marker, "")
+    return text
+
+
+def _count_markers(text: str, markers: list[str]) -> int:
+    return sum(1 for marker in markers if marker in text)
+
+
+def _has_meaningful_context(payload: VideoAuditRequest) -> bool:
+    # Title alone is too thin, but a real YouTube description/page capture gives enough visible context to avoid
+    # inventing disclosure risk when no AI-use evidence appears.
+    visible_text = "\n".join(
+        part for part in [payload.title, payload.description, payload.pinnedComment, payload.transcript] if part
+    ).strip()
+    return len(visible_text) >= 120
+
+
+def _risk_label(score: int) -> str:
+    if score <= 2:
+        return "Low"
+    if score <= 4:
+        return "Medium"
+    return "High"
+
+
+def _score_payload(payload: VideoAuditRequest) -> tuple[int, str]:
+    all_text = _combined_text(payload)
+    creator_text = _creator_disclosure_text(payload)
+    strong_text = _strong_signal_text(payload)
+
+    has_creator_disclosure = _count_markers(creator_text, CREATOR_DISCLOSURE_MARKERS) > 0
+    platform_label_count = _count_markers(all_text, PLATFORM_AI_LABEL_MARKERS)
+    strong_signal_count = _count_markers(strong_text, STRONG_AI_SIGNAL_MARKERS)
+
+    if has_creator_disclosure:
+        if strong_signal_count >= 2 or (payload.description and payload.pinnedComment):
+            return 1, LOW_RISK_FINDING
+        return 2, LOW_RISK_FINDING
+
+    if strong_signal_count >= 3:
+        return 5, HIGH_RISK_FINDING
+
+    if strong_signal_count >= 2:
+        return 5, HIGH_RISK_FINDING
+
+    if platform_label_count:
+        return 2, PLATFORM_LABEL_FINDING
+
+    if strong_signal_count == 1:
+        return 4, MEDIUM_RISK_FINDING
+
+    if _has_meaningful_context(payload):
+        return 1, NO_AI_SIGNAL_FINDING
+
+    return 3, INSUFFICIENT_CONTEXT_FINDING
+
+
+def _signals_found(payload: VideoAuditRequest) -> list[str]:
+    all_text = _combined_text(payload)
+    creator_text = _creator_disclosure_text(payload)
+    strong_text = _strong_signal_text(payload)
+    signals = []
+    if _count_markers(creator_text, CREATOR_DISCLOSURE_MARKERS):
+        signals.append("creator_disclosure")
+    if _count_markers(all_text, PLATFORM_AI_LABEL_MARKERS):
+        signals.append("platform_ai_label")
+    if _count_markers(strong_text, STRONG_AI_SIGNAL_MARKERS):
+        signals.append("strong_ai_signal")
+    return signals
+
+
+def _evidence_reviewed(payload: VideoAuditRequest) -> list[str]:
+    fields = [
+        ("title", payload.title),
+        ("channel", payload.channelName),
+        ("description", payload.description),
+        ("pinned_comment", payload.pinnedComment),
+        ("transcript", payload.transcript),
+        ("screenshot_present", payload.screenshotBase64),
+    ]
+    return [name for name, value in fields if value]
+
+
+def _recommended_action(biggest_finding: str, risk_score: int) -> RecommendedAction:
+    if biggest_finding in {NO_AI_SIGNAL_FINDING, PLATFORM_LABEL_FINDING}:
+        return "none"
+    if biggest_finding == INSUFFICIENT_CONTEXT_FINDING:
+        return "rerun_with_more_context"
+    if risk_score <= 2:
+        return "improve_existing_disclosure"
+    return "add_disclosure"
+
+
+def _context_quality(payload: VideoAuditRequest) -> str:
+    return "meaningful" if _has_meaningful_context(payload) else "thin"
 
 
 def generate_mock_video_audit(payload: VideoAuditRequest) -> VideoAuditResponse:
-    has_disclosure = any(
-        marker in (text or "").lower()
-        for text in [payload.description, payload.pinnedComment]
-        for marker in ["ai-assisted", "ai assisted", "created with ai", "synthetic voice", "ai voice"]
-    )
-
-    risk_score = 2 if has_disclosure else 3
-    risk_label = "Low" if risk_score <= 2 else "Medium"
+    risk_score, biggest_finding = _score_payload(payload)
+    risk_label = _risk_label(risk_score)
+    recommended_action = _recommended_action(biggest_finding, risk_score)
+    show_disclosure_templates = recommended_action in {"improve_existing_disclosure", "add_disclosure"}
 
     description_disclosure = (
         "AI-assisted production note: this video may use AI-assisted scripting, visuals, narration, "
@@ -19,12 +196,21 @@ def generate_mock_video_audit(payload: VideoAuditRequest) -> VideoAuditResponse:
         "Quick transparency note: this channel may use AI-assisted tools for parts of the script, visuals, "
         "voice, or editing, with human review before publishing."
     )
-    biggest_finding = (
-        "Visible signals suggest the video may benefit from clearer AI-assisted content disclosure "
-        "near the top of the description and/or in a pinned comment."
-    )
     quickest_fix = (
-        "Add a short disclosure in the first two lines of the description and as a pinned comment; this may benefit "
+        "No disclosure fix is recommended from the current evidence. If the creator did use AI-assisted voice, "
+        "visuals, scripting, or editing, add a short voluntary disclosure; otherwise leave the description as-is."
+        if biggest_finding == NO_AI_SIGNAL_FINDING
+        else "No disclosure fix is recommended for a platform auto-dub/generated-language label alone. If the "
+        "creator materially used AI for the main video's voice, visuals, scripting, or editing, add a voluntary "
+        "creator disclosure; otherwise leave the description as-is."
+        if biggest_finding == PLATFORM_LABEL_FINDING
+        else "Keep the AI-use disclosure visible in the first two lines of the description and consider mirroring it "
+        "as a pinned comment for sponsor and viewer clarity."
+        if risk_score <= 2
+        else "Open the description and rerun the audit so DisclosureLens can inspect more visible context before "
+        "recommending a disclosure fix."
+        if biggest_finding == INSUFFICIENT_CONTEXT_FINDING
+        else "Add a short disclosure in the first two lines of the description and as a pinned comment; this may benefit "
         "viewer trust by helping viewers and sponsors understand how AI-assisted tools may have been used."
     )
     title_thumbnail_caution = (
@@ -76,6 +262,11 @@ def generate_mock_video_audit(payload: VideoAuditRequest) -> VideoAuditResponse:
         riskLabel=risk_label,
         biggestFinding=biggest_finding,
         quickestFix=quickest_fix,
+        recommendedAction=recommended_action,
+        showDisclosureTemplates=show_disclosure_templates,
+        signalsFound=_signals_found(payload),
+        evidenceReviewed=_evidence_reviewed(payload),
+        contextQuality=_context_quality(payload),
         descriptionDisclosure=description_disclosure,
         pinnedCommentDisclosure=pinned_comment_disclosure,
         titleThumbnailCaution=title_thumbnail_caution,

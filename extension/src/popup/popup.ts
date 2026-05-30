@@ -17,13 +17,35 @@ function setTextarea(id: string, value: string): void {
   document.querySelector<HTMLTextAreaElement>(`#${id}`)!.value = value;
 }
 
+function setHidden(id: string, hidden: boolean): void {
+  document.querySelector<HTMLElement>(`#${id}`)!.classList.toggle('hidden', hidden);
+}
+
+function shouldShowDisclosureTemplates(audit: VideoAuditResponse): boolean {
+  return audit.showDisclosureTemplates;
+}
+
+function formatList(values: string[], emptyLabel: string): string {
+  return values.length > 0 ? values.join(', ').replaceAll('_', ' ') : emptyLabel;
+}
+
 function renderAudit(audit: VideoAuditResponse): void {
   setText('riskLabel', audit.riskLabel);
   setText('riskScore', `${audit.riskScore}/5`);
   setText('biggestFinding', audit.biggestFinding);
   setText('quickestFix', audit.quickestFix);
-  setTextarea('descriptionDisclosure', audit.descriptionDisclosure);
-  setTextarea('pinnedCommentDisclosure', audit.pinnedCommentDisclosure);
+  setText('evidenceReviewed', `Reviewed: ${formatList(audit.evidenceReviewed, 'no page evidence captured')} · Context: ${audit.contextQuality}`);
+  setText('signalsFound', `Signals found: ${formatList(audit.signalsFound, 'none')}`);
+  const showDisclosureTemplates = shouldShowDisclosureTemplates(audit);
+  setHidden('copyPasteFixes', !showDisclosureTemplates);
+  setHidden('noDisclosureTemplate', showDisclosureTemplates);
+  if (showDisclosureTemplates) {
+    setTextarea('descriptionDisclosure', audit.descriptionDisclosure);
+    setTextarea('pinnedCommentDisclosure', audit.pinnedCommentDisclosure);
+  } else {
+    setTextarea('descriptionDisclosure', '');
+    setTextarea('pinnedCommentDisclosure', '');
+  }
   setTextarea('markdown', audit.markdown);
   resultEl.classList.remove('hidden');
 }
@@ -37,7 +59,9 @@ async function runAudit(): Promise<void> {
   if (!response.ok) throw new Error(response.error);
 
   renderAudit(response.audit);
-  statusEl.textContent = 'Audit complete. Review and copy fixes below.';
+  statusEl.textContent = response.audit.recommendedAction === 'none'
+    ? 'Audit complete. No disclosure template is recommended from current evidence.'
+    : 'Audit complete. Review and copy fixes below.';
 }
 
 auditButton.addEventListener('click', () => {

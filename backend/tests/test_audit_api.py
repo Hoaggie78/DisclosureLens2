@@ -31,8 +31,8 @@ def test_audit_video_returns_positioned_mock_report():
 
     assert data["riskScore"] in [1, 2, 3, 4, 5]
     assert data["riskLabel"] in ["Low", "Medium", "High"]
-    assert "Visible signals suggest" in data["biggestFinding"]
-    assert "may benefit" in data["quickestFix"]
+    assert data["biggestFinding"]
+    assert "viewer" in data["quickestFix"]
     assert "AI-assisted" in data["descriptionDisclosure"]
     assert "AI-assisted" in data["pinnedCommentDisclosure"]
     assert "not an AI detection" in data["platformReadinessNote"]
@@ -63,7 +63,106 @@ def test_audit_video_handles_missing_optional_fields():
     assert response.status_code == 200
     data = response.json()
     assert data["riskLabel"] == "Medium"
-    assert "Add a short disclosure" in data["quickestFix"]
+    assert "rerun the audit" in data["quickestFix"]
+    assert data["recommendedAction"] == "rerun_with_more_context"
+    assert data["showDisclosureTemplates"] is False
+    assert data["contextQuality"] == "thin"
+
+
+def test_audit_video_scores_explicit_disclosure_as_lowest_risk():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            description="Transparency: this video was created with AI-assisted visuals, voice, and editing.",
+            pinnedComment="We used AI-assisted tools and human review before publishing.",
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 1
+    assert data["riskLabel"] == "Low"
+    assert "already includes visible AI-use disclosure" in data["biggestFinding"]
+    assert data["recommendedAction"] == "improve_existing_disclosure"
+    assert data["showDisclosureTemplates"] is True
+    assert "creator_disclosure" in data["signalsFound"]
+
+
+def test_audit_video_scores_strong_undisclosed_ai_signals_as_high_risk():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            title="AI Voice Recreates Lost Celebrity Interview",
+            description="Synthetic voice restoration and generated visuals bring the story to life.",
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 5
+    assert data["riskLabel"] == "High"
+    assert "Strong visible AI-use signals" in data["biggestFinding"]
+    assert data["recommendedAction"] == "add_disclosure"
+    assert data["showDisclosureTemplates"] is True
+    assert "strong_ai_signal" in data["signalsFound"]
+
+
+def test_audit_video_treats_youtube_auto_dub_label_as_low_risk_platform_context():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            title="Mermaids, Water Spirits & Seduction… What They Really Want",
+            channelName="podcast",
+            description=(
+                "What if the marine kingdom is more than mythology? TAKE THE NEXT STEP. "
+                "How this was made Auto-dubbed Audio tracks for some languages were automatically generated. "
+                "Learn more. Chapters include Assaulted by a Mermaid and The Sirens of the Deep."
+            ),
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 2
+    assert data["riskLabel"] == "Low"
+    assert "platform-generated AI labels" in data["biggestFinding"]
+    assert "main video itself is AI-generated" in data["biggestFinding"]
+    assert data["recommendedAction"] == "none"
+    assert data["showDisclosureTemplates"] is False
+    assert "platform_ai_label" in data["signalsFound"]
+    assert "strong_ai_signal" not in data["signalsFound"]
+
+
+def test_audit_video_scores_plain_interview_without_ai_signals_as_low_risk():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            url="https://www.youtube.com/watch?v=faMt1TEzh8Q",
+            title="“There’s 10 of Them” UFO Super Users Confirmed by DARPA Scientist | Bob McGwier",
+            channelName="Danny Jones",
+            description=(
+                "Watch every episode ad-free & uncensored on Patreon. Dr. Robert McGwier is a PhD applied "
+                "mathematician & engineer known for work with CIA, NSA and DARPA in digital signal processing, "
+                "software-defined radio & cognitive radio. Chapters include Working for NSA, CIA & FBI, Bob's "
+                "two UAP encounters, and Seeing orbs with Chris Bledsoe."
+            ),
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 1
+    assert data["riskLabel"] == "Low"
+    assert "No visible AI-use signals" in data["biggestFinding"]
+    assert "No disclosure fix is recommended" in data["quickestFix"]
+    assert data["recommendedAction"] == "none"
+    assert data["showDisclosureTemplates"] is False
+    assert data["signalsFound"] == []
+    assert data["contextQuality"] == "meaningful"
+    assert "description" in data["evidenceReviewed"]
 
 
 def test_audit_video_writes_redacted_capture_log(tmp_path, monkeypatch):

@@ -3,6 +3,15 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+RecommendedAction = Literal[
+    "none",
+    "rerun_with_more_context",
+    "improve_existing_disclosure",
+    "add_disclosure",
+]
+ContextQuality = Literal["thin", "meaningful"]
+
+
 class VideoAuditRequest(BaseModel):
     url: str = Field(..., description="Current YouTube video URL opened by the user")
     title: str = Field(..., min_length=1)
@@ -27,6 +36,11 @@ class VideoAuditResponse(BaseModel):
     riskLabel: Literal["Low", "Medium", "High"]
     biggestFinding: str
     quickestFix: str
+    recommendedAction: RecommendedAction
+    showDisclosureTemplates: bool
+    signalsFound: list[str]
+    evidenceReviewed: list[str]
+    contextQuality: ContextQuality
     descriptionDisclosure: str
     pinnedCommentDisclosure: str
     titleThumbnailCaution: str

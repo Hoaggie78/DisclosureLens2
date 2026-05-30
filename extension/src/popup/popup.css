@@ -90,6 +90,24 @@ label {
   margin: 10px 0 4px;
 }
 
+.notice {
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #cbd5e1;
+  margin: 14px 0 10px;
+  padding: 10px;
+}
+
+.meta-line {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  font-size: 12px;
+  margin: 6px 0;
+  padding: 8px;
+}
+
 textarea {
   background: #020617;
   border: 1px solid #334155;

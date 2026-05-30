@@ -29,14 +29,22 @@
         <h2>Quickest fix</h2>
         <p id="quickestFix"></p>
 
-        <h2>Copy/paste fixes</h2>
-        <label>Description disclosure</label>
-        <textarea id="descriptionDisclosure" readonly></textarea>
-        <button class="copy" data-copy-target="descriptionDisclosure" type="button">Copy description disclosure</button>
+        <h2>Evidence reviewed</h2>
+        <p id="evidenceReviewed" class="meta-line"></p>
+        <p id="signalsFound" class="meta-line"></p>
 
-        <label>Pinned comment disclosure</label>
-        <textarea id="pinnedCommentDisclosure" readonly></textarea>
-        <button class="copy" data-copy-target="pinnedCommentDisclosure" type="button">Copy pinned comment</button>
+        <section id="copyPasteFixes">
+          <h2>Copy/paste fixes</h2>
+          <label>Description disclosure</label>
+          <textarea id="descriptionDisclosure" readonly></textarea>
+          <button class="copy" data-copy-target="descriptionDisclosure" type="button">Copy description disclosure</button>
+
+          <label>Pinned comment disclosure</label>
+          <textarea id="pinnedCommentDisclosure" readonly></textarea>
+          <button class="copy" data-copy-target="pinnedCommentDisclosure" type="button">Copy pinned comment</button>
+        </section>
+
+        <p id="noDisclosureTemplate" class="notice hidden">No disclosure template is recommended for this audit based on the current evidence. Review the finding above for whether platform labels or other context were detected.</p>
 
         <label>Markdown report</label>
         <textarea id="markdown" readonly></textarea>

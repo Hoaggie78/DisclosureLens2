@@ -14,6 +14,11 @@ export type VideoAuditResponse = {
   riskLabel: 'Low' | 'Medium' | 'High';
   biggestFinding: string;
   quickestFix: string;
+  recommendedAction: 'none' | 'rerun_with_more_context' | 'improve_existing_disclosure' | 'add_disclosure';
+  showDisclosureTemplates: boolean;
+  signalsFound: string[];
+  evidenceReviewed: string[];
+  contextQuality: 'thin' | 'meaningful';
   descriptionDisclosure: string;
   pinnedCommentDisclosure: string;
   titleThumbnailCaution: string;
