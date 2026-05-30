@@ -33,6 +33,7 @@ STRONG_AI_SIGNAL_MARKERS = [
     "synthetic voice",
     "voice clone",
     "voice cloning",
+    "ai videos",
     "ai-generated",
     "ai generated",
     "a.i. generated",

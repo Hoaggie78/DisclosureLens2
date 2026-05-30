@@ -267,6 +267,27 @@ def test_audit_video_scores_plain_interview_without_ai_signals_as_low_risk():
     assert "description" in data["evidenceReviewed"]
 
 
+def test_audit_video_scores_real_ai_shorts_title_as_undisclosed_ai_signal():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            url="https://www.youtube.com/shorts/ASRYsb5ohDQ",
+            title="AI Videos is getting CRAZY 😵‍💫 #shorts",
+            channelName="@itssimannn",
+            description=None,
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 4
+    assert data["riskLabel"] == "Medium"
+    assert data["recommendedAction"] == "add_disclosure"
+    assert data["showDisclosureTemplates"] is True
+    assert "strong_ai_signal" in data["signalsFound"]
+
+
 def test_audit_video_writes_redacted_capture_log(tmp_path, monkeypatch):
     monkeypatch.setenv("DISCLOSURELENS_LOG_DIR", str(tmp_path))
 
