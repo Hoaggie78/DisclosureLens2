@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 
 logs/
+dogfood-output/
 extension/node_modules/
 extension/dist/
 extension/.vite/
