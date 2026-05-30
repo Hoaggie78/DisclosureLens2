@@ -10,7 +10,22 @@ async function getActiveYouTubeTab(): Promise<chrome.tabs.Tab> {
 }
 
 async function extractVideoData(tabId: number): Promise<VideoPageData> {
-  return chrome.tabs.sendMessage(tabId, { type: 'DISCLOSURELENS_EXTRACT_VIDEO' });
+  try {
+    return await chrome.tabs.sendMessage(tabId, { type: 'DISCLOSURELENS_EXTRACT_VIDEO' });
+  } catch (error) {
+    if (!isMissingContentScriptError(error)) throw error;
+
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['content/youtubeExtractor.js'],
+    });
+
+    return chrome.tabs.sendMessage(tabId, { type: 'DISCLOSURELENS_EXTRACT_VIDEO' });
+  }
+}
+
+function isMissingContentScriptError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Receiving end does not exist');
 }
 
 async function captureScreenshot(): Promise<string | null> {

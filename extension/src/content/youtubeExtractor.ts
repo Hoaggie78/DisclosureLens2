@@ -52,8 +52,15 @@ function extractVideoPageData(): VideoPageData {
   };
 }
 
-chrome.runtime.onMessage.addListener((message: ExtractVideoMessage, _sender, sendResponse) => {
-  if (message.type !== 'DISCLOSURELENS_EXTRACT_VIDEO') return false;
-  sendResponse(extractVideoPageData());
-  return true;
-});
+const listenerInstalledKey = '__disclosureLensExtractorInstalled';
+const windowWithDisclosureLens = window as typeof window & { [listenerInstalledKey]?: boolean };
+
+if (!windowWithDisclosureLens[listenerInstalledKey]) {
+  windowWithDisclosureLens[listenerInstalledKey] = true;
+
+  chrome.runtime.onMessage.addListener((message: ExtractVideoMessage, _sender, sendResponse) => {
+    if (message.type !== 'DISCLOSURELENS_EXTRACT_VIDEO') return false;
+    sendResponse(extractVideoPageData());
+    return true;
+  });
+}
