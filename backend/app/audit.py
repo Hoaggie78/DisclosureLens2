@@ -17,6 +17,8 @@ CREATOR_DISCLOSURE_MARKERS = [
     "ai-generated visuals",
     "ai generated visuals",
     "ai images",
+    "cloned myself with ai",
+    "ai clone",
 ]
 
 PLATFORM_AI_LABEL_MARKERS = [
@@ -39,6 +41,10 @@ STRONG_AI_SIGNAL_MARKERS = [
     "synthetic media",
     "deepfake",
     "recreates",
+    "cloned myself with ai",
+    "ai clone",
+    "ai avatar",
+    "faceless youtube videos",
 ]
 
 

@@ -183,6 +183,33 @@ def test_audit_video_scores_dotted_ai_generated_title_as_signal_even_with_short_
     assert "strong_ai_signal" in data["signalsFound"]
 
 
+def test_audit_video_recognizes_natural_language_ai_clone_disclosure_from_real_page():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            url="https://www.youtube.com/watch?v=m647KpdNTDg",
+            title="YouTube’s NEW Rules for AI Videos (How to Make Money Now)",
+            channelName="AI creator education channel",
+            description=(
+                "I cloned myself with AI, created 2 faceless YouTube videos, and made money. "
+                "Here's how you can too—and the new YouTube rules you MUST follow. "
+                "AI-generated video summary may appear on the page."
+            ),
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 1
+    assert data["riskLabel"] == "Low"
+    assert data["recommendedAction"] == "improve_existing_disclosure"
+    assert data["showDisclosureTemplates"] is True
+    assert "creator_disclosure" in data["signalsFound"]
+    assert "strong_ai_signal" in data["signalsFound"]
+    assert "platform_ai_label" in data["signalsFound"]
+
+
 def test_audit_video_treats_youtube_auto_dub_label_as_low_risk_platform_context():
     response = client.post(
         "/audit/video",
