@@ -1,9 +1,10 @@
 import type { AuditCurrentTabMessage, VideoAuditResponse, VideoPageData } from '../shared/types';
+import { isSupportedYouTubeVideoUrl } from '../shared/youtubeUrl';
 
 async function getActiveYouTubeTab(): Promise<chrome.tabs.Tab> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url?.includes('youtube.com/watch')) {
-    throw new Error('Open a YouTube video page before running an audit.');
+  if (!tab?.id || !isSupportedYouTubeVideoUrl(tab.url)) {
+    throw new Error('Open a YouTube video or Shorts page before running an audit.');
   }
   return tab;
 }

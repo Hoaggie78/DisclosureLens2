@@ -24,9 +24,10 @@ echo "== Backend tests =="
   PYTHONPATH=. pytest tests -q
 )
 
-echo "== Extension typecheck/build =="
+echo "== Extension tests/typecheck/build =="
 (
   cd "$ROOT/extension"
+  npm test
   npm run typecheck
   npm run build
 )
