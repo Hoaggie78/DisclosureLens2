@@ -17,9 +17,13 @@ Avoid wording like:
 - "This is deceptive."
 - "This is legal/compliance advice."
 
-## MVP: Audit Current YouTube Video
+## MVP: Audit Current YouTube Video or Short
 
-1. User opens a YouTube video in Chrome.
+1. User opens a supported YouTube route in Chrome:
+   - `youtube.com/watch?...`
+   - `youtube.com/shorts/...`
+   - `m.youtube.com/watch?...`
+   - `m.youtube.com/shorts/...`
 2. Extension extracts current-tab page data:
    - URL
    - title
@@ -28,8 +32,10 @@ Avoid wording like:
    - thumbnail URL if available
    - pinned comment if visible
    - screenshot of visible tab
-3. Extension sends the payload to `POST /audit/video`.
-4. Backend returns a mock audit report with copy/paste fixes.
+3. Extension sends the payload to `POST /audit/video` on `localhost:8000`.
+4. Backend returns a deterministic visible-signal audit report with copy/paste fixes only when a disclosure action is recommended.
+
+Manual QA checklist: [`docs/qa/mvp-manual-qa.md`](docs/qa/mvp-manual-qa.md)
 
 ## Run backend locally
 
@@ -65,6 +71,7 @@ Then load `extension/dist` as an unpacked extension in Chrome/Chromium.
 ## Current status
 
 - FastAPI backend scaffold exists.
-- `POST /audit/video` returns deterministic mock audit output.
-- MV3 extension scaffold exists with popup, content script, service worker, screenshot capture, and localhost API call.
+- `POST /audit/video` returns deterministic visible-signal audit output.
+- MV3 extension scaffold exists with popup, content script, service worker, screenshot capture, Shorts support, missing-content-script recovery, and localhost API call.
+- The popup maps common setup/runtime failures to friendly troubleshooting copy.
 - LLM/vision integration is intentionally not implemented yet.

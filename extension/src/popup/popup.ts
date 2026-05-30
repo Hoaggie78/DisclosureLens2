@@ -1,5 +1,6 @@
 import './popup.css';
 import type { VideoAuditResponse } from '../shared/types';
+import { formatAuditError } from './popupErrors';
 
 type AuditMessageResponse =
   | { ok: true; audit: VideoAuditResponse }
@@ -66,7 +67,7 @@ async function runAudit(): Promise<void> {
 
 auditButton.addEventListener('click', () => {
   runAudit().catch((error: Error) => {
-    statusEl.textContent = error.message;
+    statusEl.textContent = formatAuditError(error.message);
   }).finally(() => {
     auditButton.disabled = false;
   });
