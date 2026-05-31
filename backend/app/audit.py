@@ -182,7 +182,7 @@ def _score_payload(payload: VideoAuditRequest) -> tuple[int, str]:
         return 5, HIGH_RISK_FINDING
 
     if platform_label_count:
-        return 2, PLATFORM_LABEL_FINDING
+        return 1, PLATFORM_LABEL_FINDING
 
     if strong_signal_count == 1:
         return 4, MEDIUM_RISK_FINDING

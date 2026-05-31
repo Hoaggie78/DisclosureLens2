@@ -210,7 +210,7 @@ def test_audit_video_recognizes_natural_language_ai_clone_disclosure_from_real_p
     assert "platform_ai_label" in data["signalsFound"]
 
 
-def test_audit_video_treats_youtube_auto_dub_label_as_low_risk_platform_context():
+def test_audit_video_treats_youtube_auto_dub_label_as_minimal_risk_platform_context():
     response = client.post(
         "/audit/video",
         json=sample_payload(
@@ -227,7 +227,7 @@ def test_audit_video_treats_youtube_auto_dub_label_as_low_risk_platform_context(
 
     assert response.status_code == 200
     data = response.json()
-    assert data["riskScore"] == 2
+    assert data["riskScore"] == 1
     assert data["riskLabel"] == "Low"
     assert "platform-generated AI labels" in data["biggestFinding"]
     assert "main video itself is AI-generated" in data["biggestFinding"]
