@@ -1,3 +1,5 @@
+import re
+
 from app.models import RecommendedAction, VideoAuditRequest, VideoAuditResponse
 
 
@@ -76,7 +78,36 @@ INSUFFICIENT_CONTEXT_FINDING = (
 )
 
 
-def _combined_text(payload: VideoAuditRequest) -> str:
+NEGATION_CUES = [
+    "no visible claims about",
+    "no visible signs of",
+    "no evidence of",
+    "no signs of",
+    "without any",
+    "does not include",
+]
+
+
+def _strip_negated_marker_sentences(text: str) -> str:
+    """Remove sentences that mention AI markers only to say they are absent.
+
+    YouTube page captures and QA notes can include text such as "no visible claims about AI voice".
+    Those phrases are useful context, but they should not be counted as positive AI-use evidence.
+    """
+    sentences = re.split(r"(?<=[.!?])\s+", text)
+    marker_terms = CREATOR_DISCLOSURE_MARKERS + PLATFORM_AI_LABEL_MARKERS + STRONG_AI_SIGNAL_MARKERS
+    kept = []
+    for sentence in sentences:
+        lowered = sentence.lower()
+        has_negation_cue = any(cue in lowered for cue in NEGATION_CUES)
+        has_marker = any(marker in lowered for marker in marker_terms)
+        if has_negation_cue and has_marker:
+            continue
+        kept.append(sentence)
+    return " ".join(kept)
+
+
+def _combined_text(payload: VideoAuditRequest, *, strip_negated_markers: bool = False) -> str:
     parts = [
         payload.title,
         payload.channelName,
@@ -84,7 +115,8 @@ def _combined_text(payload: VideoAuditRequest) -> str:
         payload.pinnedComment,
         payload.transcript,
     ]
-    return "\n".join(part for part in parts if part).lower()
+    text = "\n".join(part for part in parts if part).lower()
+    return _strip_negated_marker_sentences(text) if strip_negated_markers else text
 
 
 def _creator_disclosure_text(payload: VideoAuditRequest) -> str:
@@ -92,6 +124,7 @@ def _creator_disclosure_text(payload: VideoAuditRequest) -> str:
     # page text are useful signals, but they should not be treated as the creator's own disclosure.
     parts = [payload.description, payload.pinnedComment]
     text = "\n".join(part for part in parts if part).lower()
+    text = _strip_negated_marker_sentences(text)
     for marker in PLATFORM_AI_LABEL_MARKERS:
         text = text.replace(marker, "")
     return text
@@ -101,7 +134,7 @@ def _strong_signal_text(payload: VideoAuditRequest) -> str:
     # Platform labels can contain phrases like "AI-generated video summary" that overlap with stronger
     # creator/content AI markers. Strip known platform-label phrases before counting strong signals so a
     # platform-generated label alone does not appear as creator/content AI evidence.
-    text = _combined_text(payload)
+    text = _combined_text(payload, strip_negated_markers=True)
     for marker in PLATFORM_AI_LABEL_MARKERS:
         text = text.replace(marker, "")
     return text

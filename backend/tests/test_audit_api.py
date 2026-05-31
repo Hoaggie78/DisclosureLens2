@@ -288,6 +288,31 @@ def test_audit_video_scores_real_ai_shorts_title_as_undisclosed_ai_signal():
     assert "strong_ai_signal" in data["signalsFound"]
 
 
+def test_audit_video_ignores_negated_ai_signal_phrases_in_meaningful_context():
+    response = client.post(
+        "/audit/video",
+        json=sample_payload(
+            url="https://www.youtube.com/shorts/no-ai-signal-case",
+            title="Quick kitchen organization hack",
+            channelName="Home Reset Clips",
+            description=(
+                "A short practical clip showing a kitchen drawer organization tip with captions, a simple "
+                "before-and-after demonstration, and no visible claims about AI voice, synthetic visuals, "
+                "auto dubbing, or generated content. The creator describes the supplies and steps used in the clip."
+            ),
+            pinnedComment=None,
+        ),
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["riskScore"] == 1
+    assert data["riskLabel"] == "Low"
+    assert data["recommendedAction"] == "none"
+    assert data["showDisclosureTemplates"] is False
+    assert data["signalsFound"] == []
+
+
 def test_audit_video_writes_redacted_capture_log(tmp_path, monkeypatch):
     monkeypatch.setenv("DISCLOSURELENS_LOG_DIR", str(tmp_path))
 
